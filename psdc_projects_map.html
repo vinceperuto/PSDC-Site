@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSDC Projects | Philadelphia Suburban Development Corp.</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --navy: #0d1f3c;
+    --navy-mid: #1a3560;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --cream: #f7f4ef;
+    --slate: #4a5568;
+    --light: #eef1f7;
+    --white: #ffffff;
+    --shadow: 0 4px 24px rgba(13,31,60,0.13);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--navy); }
+
+  /* ── Header ── */
+  #header {
+    background: var(--navy);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    height: 64px;
+    box-shadow: 0 2px 16px rgba(13,31,60,0.3);
+    position: relative;
+    z-index: 1001;
+  }
+  #header-brand {
+    display:flex; align-items:center; gap:14px;
+  }
+  #header-logo {
+    width: 36px; height: 36px;
+    background: var(--gold);
+    border-radius: 6px;
+    display: flex; align-items:center; justify-content:center;
+    font-family:'Playfair Display',serif;
+    font-size:14px; font-weight:900; color:var(--navy);
+    letter-spacing:1px;
+    flex-shrink:0;
+  }
+  #header h1 {
+    font-family:'Playfair Display',serif;
+    font-size:17px; font-weight:700;
+    color:var(--white);
+    line-height:1.2;
+  }
+  #header h1 span { color:var(--gold-light); font-size:11px; font-weight:300; font-family:'DM Sans',sans-serif; display:block; letter-spacing:0.05em; }
+
+  #header-filters {
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  }
+  .fchip {
+    background:rgba(255,255,255,0.09);
+    border:1.5px solid rgba(255,255,255,0.15);
+    border-radius:20px;
+    padding:5px 14px;
+    font-size:11.5px; color:rgba(255,255,255,0.75);
+    cursor:pointer; transition:all 0.18s;
+    white-space:nowrap; font-weight:500;
+    letter-spacing:0.03em;
+  }
+  .fchip:hover, .fchip.active {
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--navy);
+    font-weight:700;
+  }
+  #header-count {
+    font-size:12px; color:rgba(255,255,255,0.45);
+    white-space:nowrap; font-weight:300;
+    margin-left:4px;
+  }
+  #header-count strong { color:var(--gold-light); font-weight:600; }
+
+  /* ── Layout ── */
+  #app { display:flex; height:calc(100vh - 64px); }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width:340px; flex-shrink:0;
+    background:var(--white);
+    overflow-y:auto;
+    border-right:1px solid #e2e8f0;
+    box-shadow:2px 0 12px rgba(13,31,60,0.07);
+    z-index:10;
+  }
+  #sidebar::-webkit-scrollbar { width:4px; }
+  #sidebar::-webkit-scrollbar-thumb { background:#c8d0e0; border-radius:2px; }
+
+  .sidebar-header {
+    padding:18px 20px 12px;
+    border-bottom:1px solid #eef1f7;
+    background:var(--cream);
+    position:sticky; top:0; z-index:2;
+  }
+  .sidebar-header h2 {
+    font-family:'Playfair Display',serif;
+    font-size:15px; font-weight:700; color:var(--navy);
+  }
+  .sidebar-header p { font-size:11px; color:var(--slate); margin-top:2px; }
+
+  .prop-card {
+    padding:16px 20px;
+    border-bottom:1px solid #eef1f7;
+    cursor:pointer;
+    transition:all 0.15s;
+    position:relative;
+  }
+  .prop-card:hover { background:var(--cream); }
+  .prop-card.active {
+    background:#eef3ff;
+    border-left:3px solid var(--navy-mid);
+    padding-left:17px;
+  }
+  .prop-card-type {
+    font-size:9.5px; font-weight:700; letter-spacing:0.1em;
+    text-transform:uppercase; margin-bottom:4px;
+    color:var(--gold);
+  }
+  .prop-card-name {
+    font-family:'Playfair Display',serif;
+    font-size:14px; font-weight:700;
+    color:var(--navy); line-height:1.3; margin-bottom:3px;
+  }
+  .prop-card-addr {
+    font-size:11.5px; color:var(--slate); margin-bottom:8px;
+  }
+  .prop-card-tags { display:flex; gap:5px; flex-wrap:wrap; }
+  .tag {
+    font-size:10px; font-weight:600; padding:2px 8px;
+    border-radius:10px; letter-spacing:0.02em;
+  }
+  .tag-status-active { background:#d1fae5; color:#065f46; }
+  .tag-status-proposed { background:#fef3c7; color:#92400e; }
+  .tag-status-dead { background:#fee2e2; color:#991b1b; }
+  .tag-status-hq { background:#ede9fe; color:#4c1d95; }
+  .tag-type { background:var(--light); color:var(--navy-mid); }
+
+  /* ── Map ── */
+  #map { flex:1; }
+
+  /* ── Popup ── */
+  .leaflet-popup-content-wrapper {
+    border-radius:10px;
+    box-shadow:0 8px 32px rgba(13,31,60,0.2);
+    padding:0; overflow:hidden;
+    border:none;
+    font-family:'DM Sans',sans-serif;
+  }
+  .leaflet-popup-content { margin:0; min-width:280px; max-width:320px; }
+  .leaflet-popup-tip { background:var(--navy); }
+
+  .popup-hero {
+    background:var(--navy);
+    padding:14px 16px 12px;
+    position:relative;
+  }
+  .popup-type {
+    font-size:9px; font-weight:700; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--gold);
+    margin-bottom:3px;
+  }
+  .popup-name {
+    font-family:'Playfair Display',serif;
+    font-size:16px; font-weight:700; color:var(--white);
+    line-height:1.25;
+  }
+  .popup-addr {
+    font-size:11px; color:rgba(255,255,255,0.6);
+    margin-top:4px;
+  }
+  .popup-body { padding:12px 16px; background:var(--white); }
+  .popup-row {
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:5px 0; border-bottom:1px solid #f0f4f8;
+    font-size:11.5px; gap:10px;
+  }
+  .popup-row:last-child { border-bottom:none; padding-bottom:0; }
+  .popup-row .lbl { color:#94a3b8; font-weight:500; white-space:nowrap; flex-shrink:0; }
+  .popup-row .val { color:var(--navy); font-weight:600; text-align:right; }
+  .popup-desc {
+    font-size:11.5px; color:var(--slate); line-height:1.55;
+    padding:10px 0 4px; border-top:1px solid #f0f4f8; margin-top:4px;
+  }
+  .popup-badge {
+    display:inline-block; font-size:9.5px; font-weight:700;
+    padding:3px 9px; border-radius:10px; margin-top:8px;
+    letter-spacing:0.05em; text-transform:uppercase;
+  }
+  .badge-active { background:#d1fae5; color:#065f46; }
+  .badge-proposed { background:#fef3c7; color:#92400e; }
+  .badge-dead { background:#fee2e2; color:#991b1b; }
+  .badge-hq { background:#ede9fe; color:#4c1d95; }
+
+  /* ── Legend ── */
+  .map-legend {
+    background:white; padding:12px 16px;
+    border-radius:10px; font-size:11px;
+    box-shadow:var(--shadow); line-height:2;
+    font-family:'DM Sans',sans-serif;
+  }
+  .map-legend h4 {
+    font-family:'Playfair Display',serif;
+    font-size:11px; font-weight:700; color:var(--navy);
+    margin-bottom:4px; text-transform:uppercase; letter-spacing:0.08em;
+  }
+  .legend-row { display:flex; align-items:center; gap:7px; }
+  .legend-dot {
+    width:13px; height:13px; border-radius:50%; flex-shrink:0;
+    border:2px solid rgba(255,255,255,0.8);
+    box-shadow:0 1px 4px rgba(0,0,0,0.2);
+  }
+
+  /* ── Pin colors ── */
+  /* office=#0d1f3c, mixed=#c9a84c, residential=#1a7a4a, dev-site=#e05c2a, hq=#6b3fa0, dead=#94a3b8 */
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-brand">
+    <div id="header-logo">PSDC</div>
+    <h1>Current &amp; Upcoming Developments
+      <span>Philadelphia Suburban Development Corporation</span>
+    </h1>
+  </div>
+  <div id="header-filters">
+    <button class="fchip active" onclick="filterType('all',this)">All Projects</button>
+    <button class="fchip" onclick="filterType('Office',this)">Office</button>
+    <button class="fchip" onclick="filterType('Mixed-Use',this)">Mixed-Use</button>
+    <button class="fchip" onclick="filterType('Residential',this)">Residential</button>
+    <button class="fchip" onclick="filterType('Development Site',this)">Dev Site</button>
+    <span id="header-count"><strong id="hc-num">7</strong> projects</span>
+  </div>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <h2>PSDC Project Portfolio</h2>
+      <p>Current &amp; upcoming developments — Philadelphia region</p>
+    </div>
+    <div id="card-list"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script>
+const PROJECTS = [
+  {
+    id: 1,
+    name: "The Aire — Malvern",
+    address: "13 & 15 Atwater Dr / 6 Great Valley Pkwy, Malvern, PA 19355",
+    lat: 40.0412, lng: -75.5134,
+    type: "Office",
+    status: "active",
+    statusLabel: "Under Development",
+    size: "750,000 SF (3 buildings)",
+    lot: "~30 acres (former Liberty Property Trust)",
+    built: "Est. completion 2022–2024",
+    use: "Class A 'Healthy' Office Complex",
+    highlights: [
+      ["Buildings", "3 interconnected office towers"],
+      ["Total SF", "750,000 SF"],
+      ["Site", "~30 acres, East Whiteland Twp."],
+      ["Concept", "Post-pandemic 'healthy building'"],
+      ["Features", "Private balconies, advanced HVAC/filtration, multiple entry/exit points"],
+      ["Acquired From", "Liberty Property Trust ($10.2M)"],
+      ["Nearby", "PA Turnpike & Route 202 intersection"],
+      ["Est. Rate", "~10–15% premium over market avg ($32.85/SF)"],
+    ],
+    description: "PSDC's flagship suburban office campus designed around post-pandemic wellness principles. Three buildings totaling 750,000 SF with no shared communal gathering areas, private balconies, and hospital-grade air filtration. Acquired from Liberty Property Trust."
+  },
+  {
+    id: 2,
+    name: "The Aire — Towamencin Village, Lansdale",
+    address: "Sumneytown & Forty Foot Rd, Lansdale, PA 19446",
+    lat: 40.2407, lng: -75.2849,
+    type: "Mixed-Use",
+    status: "active",
+    statusLabel: "Under Development",
+    size: "600,000 SF on 40 acres",
+    lot: "40 acres (3-block stretch)",
+    built: "Ongoing",
+    use: "Mixed-Use: Office, Retail, Residential, Hotel",
+    highlights: [
+      ["Total Site", "40 acres"],
+      ["Planned SF", "600,000 SF"],
+      ["Medical Office", "150,000 SF (anchored by major health system)"],
+      ["Retail", "Pad sites along Forty Foot Rd (7 commercial sites)"],
+      ["Residential", "Apartments included in master plan"],
+      ["Hotel", "Additional hotel planned"],
+      ["Township", "Towamencin Township, Montgomery County"],
+      ["PSDC ownership", "Corner of Sumneytown & Forty Foot since 1960s"],
+    ],
+    description: "Major mixed-use campus at the Lansdale Turnpike interchange — land PSDC has owned since the 1960s. Plans include a 150,000 SF medical office anchored by an undisclosed health system, retail pad sites, apartments, and hotels. Sidewalk reconstruction along Allentown Rd underway 2025."
+  },
+  {
+    id: 3,
+    name: "Stadium Square — 700 Packer Ave",
+    address: "700 Packer Ave (at S 7th St), Philadelphia, PA 19148",
+    lat: 39.9092, lng: -75.1706,
+    type: "Mixed-Use",
+    status: "dead",
+    statusLabel: "Project Collapsed (Feb 2026)",
+    size: "1.95M SF proposed across 6 buildings",
+    lot: "Former Parx Casino Race & Sportsbook site",
+    built: "Never built — Hines withdrew 2025",
+    use: "Proposed: Residential, Office, Retail, Entertainment",
+    highlights: [
+      ["Residential Units", "1,367 apartments (proposed)"],
+      ["Residential SF", "1.3M SF"],
+      ["Office SF", "393,000 SF"],
+      ["Retail SF", "125,000 SF"],
+      ["Dining/Entertainment", "65,000 SF restaurant & entertainment complex"],
+      ["Parking", "1,234 spaces in building bases"],
+      ["Buildings", "6 buildings (4 residential, 1 office tower, 1 entertainment)"],
+      ["Partner", "Hines (international developer) — withdrew summer 2025"],
+      ["Zoning", "Rezoned Dec 2024; repealed Feb 2026 by Council President Johnson"],
+      ["Opponents", "Philadelphia Eagles, Phillies, Comcast Spectacor"],
+      ["PSDC Role", "Land owner (PSDC owns the site)"],
+    ],
+    description: "A proposed $2B+ mega-development partnered with Hines on PSDC-owned land adjacent to Citizens Bank Park. Approved Dec 2024 but Hines quietly withdrew in summer 2025. City Council repealed the zoning legislation in Feb 2026 over community opposition from the Eagles, Phillies, and Comcast Spectacor. Site remains PSDC-owned and vacant."
+  },
+  {
+    id: 4,
+    name: "3200 South Broad St — Residential Dev Site",
+    address: "3200 S Broad St, Philadelphia, PA 19145",
+    lat: 39.9035, lng: -75.1716,
+    type: "Development Site",
+    status: "proposed",
+    statusLabel: "For Sale / Entitled",
+    size: "150,650 SF development site",
+    lot: "150,650 SF land parcel",
+    built: "Seeking buyer/developer",
+    use: "Potential Residential Development",
+    highlights: [
+      ["Site SF", "150,650 total SF"],
+      ["Location", "S Broad St just off Packer Ave, Philadelphia"],
+      ["District", "Packer Park / Stadium District"],
+      ["Zoning", "Positioned for residential entitlements"],
+      ["Transit", "NRG Station — SEPTA Broad Street Subway Line"],
+      ["Highway Access", "I-76, I-95, Walt Whitman Bridge"],
+      ["Nearby", "Philadelphia Navy Yard, Live! Casino & Hotel"],
+      ["PSDC Notes", "Offering time for buyer to obtain entitlements"],
+    ],
+    description: "A 150,650 SF development site on South Broad Street, positioned for high-density residential development. Situated in the rapidly transforming Stadium/Packer Park district with direct SEPTA Broad Street Line access. PSDC is marketing the site to developers with time allotted to secure entitlements."
+  },
+  {
+    id: 5,
+    name: "Towamencin Village Shopping Center",
+    address: "Sumneytown Pike & Allentown Rd, Lansdale, PA 19446",
+    lat: 40.2450, lng: -75.2820,
+    type: "Mixed-Use",
+    status: "active",
+    statusLabel: "Operational / Expanding",
+    size: "Regional shopping center + pad sites",
+    lot: "40-acre campus",
+    built: "Existing; ongoing redevelopment",
+    use: "Retail Shopping Center with Commercial Pad Sites",
+    highlights: [
+      ["Type", "Retail shopping center"],
+      ["Township", "Towamencin Township, Montgomery County"],
+      ["New Pad Sites", "~7 commercial sites along Forty Foot Rd"],
+      ["Pad Uses", "Fast-casual restaurant, drive-thru, bank, retail"],
+      ["Plan Approval", "Expected end of 2025"],
+      ["Sidewalks", "Allentown Rd reconstruction summer 2025"],
+      ["Overlay", "Main Street Overlay Zoning Amendment in review"],
+      ["PSDC Role", "Owner & manager (ongoing development)"],
+    ],
+    description: "PSDC's long-held Lansdale shopping center undergoing active redevelopment. Seven new commercial pad sites are proposed along Forty Foot Road including fast-casual dining and a drive-thru. Township land development approval anticipated late 2025. Part of PSDC's broader Lansdale master plan."
+  },
+  {
+    id: 6,
+    name: "The Pinnacle",
+    address: "1684 S Broad St, Lansdale, PA 19446",
+    lat: 40.2318, lng: -75.2797,
+    type: "Office",
+    status: "active",
+    statusLabel: "Available for Lease",
+    size: "344,280 SF Class A Office",
+    lot: "43.51-acre campus",
+    built: "1999 (renovated 2018)",
+    use: "Class A Corporate Office Campus",
+    highlights: [
+      ["Total SF", "344,280 SF"],
+      ["Stories", "3 stories"],
+      ["Class", "Class A office"],
+      ["Lot Size", "43.51 acres — private campus"],
+      ["Parking", "On-site parking garage"],
+      ["Signage", "Monument signage available"],
+      ["Transit", "Near SEPTA Lansdale/Doylestown Regional Rail line"],
+      ["Highway", "Access to I-476 (Blue Route)"],
+      ["County", "Montgomery County (fastest-growing in PA)"],
+      ["Tenants", "Corporate headquarters caliber"],
+    ],
+    description: "A 344,280 SF, three-story Class A office building on a sprawling 44-acre private campus in Lansdale. Originally built 1999, renovated 2018 to corporate headquarters standards. Ideal for large tenants seeking suburban Philadelphia headquarters with rail and highway access."
+  },
+  {
+    id: 7,
+    name: "100 Ross Road — PSDC Headquarters",
+    address: "100 Ross Road, Suite 200, King of Prussia, PA 19406",
+    lat: 40.0895, lng: -75.3784,
+    type: "Office",
+    status: "hq",
+    statusLabel: "PSDC HQ + Tenant Space Available",
+    size: "87,192 SF",
+    lot: "6–9 acres",
+    built: "1965 (renovated 2001)",
+    use: "Class B Office — PSDC Headquarters",
+    highlights: [
+      ["Total SF", "87,192 SF"],
+      ["Stories", "2 stories, elevator served"],
+      ["Class", "Class B office"],
+      ["Lot", "6–9 acres"],
+      ["PSDC Occupies", "~7,800 SF (Suite 200)"],
+      ["Available", "Suites from 1,600–40,000 RSF"],
+      ["Asking Rate", "$15.00/SF (below market)"],
+      ["Parking", "Multi-level lot, ample supply"],
+      ["Transit", "Walking distance to SEPTA Route 100 (Bridgeport)"],
+      ["Highway", "Routes 202, PA Turnpike, I-76, I-476"],
+      ["Renovated", "2001 by PSDC"],
+    ],
+    description: "PSDC's corporate headquarters since its founding, now also offered as a flexible leasing opportunity. The two-story, 87,192 SF Class B building offers highly efficient suite layouts with ownership and management on-site. Below-market rates available from 1,600 to 40,000 RSF."
+  }
+];
+
+// ── Pin colors by type/status ──
+const PIN_COLORS = {
+  'Office': '#0d1f3c',
+  'Mixed-Use': '#c9a84c',
+  'Residential': '#1a7a4a',
+  'Development Site': '#e05c2a',
+  'hq': '#6b3fa0',
+  'dead': '#94a3b8',
+};
+
+function pinColor(p) {
+  if(p.status === 'dead') return PIN_COLORS['dead'];
+  if(p.status === 'hq') return PIN_COLORS['hq'];
+  return PIN_COLORS[p.type] || '#0d1f3c';
+}
+
+function makeIcon(p, size=32) {
+  const c = pinColor(p);
+  const s = size;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${Math.round(s*1.31)}" viewBox="0 0 32 42">
+    <path d="M16 0C7.16 0 0 7.16 0 16c0 11 16 26 16 26S32 27 32 16C32 7.16 24.84 0 16 0z" fill="${c}" stroke="white" stroke-width="2"/>
+    <circle cx="16" cy="16" r="6" fill="white" opacity="0.9"/>
+  </svg>`;
+  return L.divIcon({html:svg, className:'', iconSize:[s, Math.round(s*1.31)], iconAnchor:[s/2, Math.round(s*1.31)], popupAnchor:[0,-Math.round(s*1.31)]});
+}
+
+// ── Map init ──
+const map = L.map('map', {zoomControl:false}).setView([40.05, -75.28], 10);
+L.control.zoom({position:'bottomright'}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© <a href="https://www.openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
+  maxZoom:19
+}).addTo(map);
+
+// Legend
+const legend = L.control({position:'bottomleft'});
+legend.onAdd = () => {
+  const d = L.DomUtil.create('div','map-legend');
+  const entries = [
+    ['Office','#0d1f3c'], ['Mixed-Use','#c9a84c'],
+    ['Development Site','#e05c2a'], ['HQ','#6b3fa0'], ['Inactive','#94a3b8']
+  ];
+  d.innerHTML = '<h4>Property Type</h4>' + entries.map(([l,c])=>
+    `<div class="legend-row"><div class="legend-dot" style="background:${c}"></div><span>${l}</span></div>`
+  ).join('');
+  return d;
+};
+legend.addTo(map);
+
+// ── Sidebar cards & markers ──
+let markers = {};
+let activeFilter = 'all';
+let activeCard = null;
+
+function statusTagClass(s) {
+  if(s==='active') return 'tag-status-active';
+  if(s==='proposed') return 'tag-status-proposed';
+  if(s==='dead') return 'tag-status-dead';
+  if(s==='hq') return 'tag-status-hq';
+  return 'tag-type';
+}
+
+function buildSidebar(projects) {
+  const list = document.getElementById('card-list');
+  list.innerHTML = '';
+  projects.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'prop-card';
+    card.id = 'card-' + p.id;
+    card.innerHTML = `
+      <div class="prop-card-type">${p.type}</div>
+      <div class="prop-card-name">${p.name}</div>
+      <div class="prop-card-addr">${p.address}</div>
+      <div class="prop-card-tags">
+        <span class="tag ${statusTagClass(p.status)}">${p.statusLabel}</span>
+        <span class="tag tag-type">${p.size.split(' ')[0]+' '+p.size.split(' ')[1]}</span>
+      </div>`;
+    card.onclick = () => selectProject(p.id);
+    list.appendChild(card);
+  });
+}
+
+function buildPopup(p) {
+  const rows = p.highlights.map(([l,v]) =>
+    `<div class="popup-row"><span class="lbl">${l}</span><span class="val">${v}</span></div>`
+  ).join('');
+  const badgeCls = p.status==='active'?'badge-active':p.status==='dead'?'badge-dead':p.status==='hq'?'badge-hq':'badge-proposed';
+  return `
+    <div class="popup-hero">
+      <div class="popup-type">${p.type}</div>
+      <div class="popup-name">${p.name}</div>
+      <div class="popup-addr">${p.address}</div>
+    </div>
+    <div class="popup-body">
+      ${rows}
+      <div class="popup-desc">${p.description}</div>
+      <span class="popup-badge ${badgeCls}">${p.statusLabel}</span>
+    </div>`;
+}
+
+function buildMarkers(projects) {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  projects.forEach(p => {
+    const m = L.marker([p.lat, p.lng], {icon: makeIcon(p)});
+    m.bindPopup(buildPopup(p), {maxWidth:340, className:''});
+    m.on('click', () => selectProject(p.id, false));
+    m.addTo(map);
+    markers[p.id] = m;
+  });
+}
+
+function selectProject(id, panMap=true) {
+  // Highlight card
+  document.querySelectorAll('.prop-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById('card-'+id);
+  if(card) { card.classList.add('active'); card.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  activeCard = id;
+  // Open popup & pan
+  const m = markers[id];
+  const p = PROJECTS.find(x=>x.id===id);
+  if(m && p && panMap) {
+    map.setView([p.lat, p.lng], Math.max(map.getZoom(), 13), {animate:true});
+    m.openPopup();
+  } else if(m) {
+    m.openPopup();
+  }
+}
+
+function filterType(type, btn) {
+  activeFilter = type;
+  document.querySelectorAll('.fchip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = type==='all' ? PROJECTS : PROJECTS.filter(p=>p.type===type);
+  document.getElementById('hc-num').textContent = filtered.length;
+  buildSidebar(filtered);
+  buildMarkers(filtered);
+  if(filtered.length > 0) {
+    const group = L.featureGroup(filtered.map(p=>markers[p.id]));
+    map.fitBounds(group.getBounds().pad(0.2), {animate:true});
+  }
+}
+
+// ── Init ──
+buildSidebar(PROJECTS);
+buildMarkers(PROJECTS);
+</script>
+</body>
+</html>
